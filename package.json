@@ -26,6 +26,7 @@
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "daisyui": "^1.14.5",
-    "svelte-fa": "^2.3.3"
+    "svelte-fa": "^2.3.3",
+    "svelte-routing": "^1.6.0"
   }
 }

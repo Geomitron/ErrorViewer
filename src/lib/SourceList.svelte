@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { driveLink } from './utils'
+  import { Link } from 'svelte-routing'
+  import { driveLink } from '../utils'
   import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
   import Fa from 'svelte-fa'
 
@@ -67,7 +68,7 @@
             <td class="!bg-transparent !whitespace-normal !p-2">
               <div class="flex flex-row-reverse gap-3">
                 <a target="_blank" class="link mt-1.5" href="{driveLink(row.sourceDriveID)}"><Fa icon={faFolderOpen}/></a>
-                <a class="link link-accent align-middle" href="">Errors</a>
+                <Link to="error-list/{row.sourceDriveID}" class="link link-accent align-middle">Errors</Link>
               </div>
             </td>
           </tr>
