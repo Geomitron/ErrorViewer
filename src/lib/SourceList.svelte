@@ -1,8 +1,10 @@
+<!-- svelte-ignore unused-export-let -->
 <script lang="ts">
   import { Link } from 'svelte-routing'
   import { driveLink } from '../utils'
   import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
   import Fa from 'svelte-fa'
+  export let location: Location
 
   type SearchType = 'sourceName' | 'charterName' | 'driveLink'
   interface SourceDataQueryResult {
@@ -36,8 +38,8 @@
   }
 </script>
 
-<div class="container mx-auto my-12 flex">
-  <div class="form-control mx-auto w-1/2">
+<div class="container mx-auto my-12 w-1/2 flex">
+  <div class="form-control mx-auto">
     <input type="text" bind:value="{filterText}" on:keyup="{updateTable}" class="input input-primary input-bordered" placeholder="Filter">
     <div class="flex flex-row-reverse">
       <label class="cursor-pointer label ml-2">
@@ -57,8 +59,8 @@
     <table class="table w-full table-auto">
       <thead>
         <tr>
-          <th>Source Name</th>
-          <th class="text-right">Links</th>
+          <th class="!p-2">Source Name</th>
+          <th class="!p-2 text-right">Links</th>
         </tr>
       </thead>
       <tbody>
