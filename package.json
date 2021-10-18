@@ -24,6 +24,8 @@
     "vite": "^2.6.4"
   },
   "dependencies": {
-    "daisyui": "^1.14.5"
+    "@fortawesome/free-solid-svg-icons": "^5.15.4",
+    "daisyui": "^1.14.5",
+    "svelte-fa": "^2.3.3"
   }
 }
