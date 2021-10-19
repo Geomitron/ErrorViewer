@@ -1,7 +1,10 @@
 <!-- svelte-ignore unused-export-let -->
 <script lang="ts">
-  import { cloneDeep } from 'lodash'
+  import { cloneDeep, keys, values, entries } from 'lodash'
+  import { driveLink } from '../utils'
   import { writable } from 'svelte/store'
+  import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
+  import Fa from 'svelte-fa'
   export let location: Location
   export let driveFolderID: string
 
@@ -18,13 +21,16 @@
   interface SourceItem {
     itemName: string
     folderID: string
+    inChartPack: boolean
+    displayName: string // Calculated on the frontend
     errors: { [errorID :string]: ChartError }
     warnings: { [warningID: string]: ChartError }
   }
 
   interface ChartError {
-    name: string | null // Will be `null` if the error applies to the source item instead of the chart it contains.
+    name: string | null // Will be `null` if the full chart name couldn't be determined (look at other names if possible)
     description: string
+    referenceFolderLink?: string // Calculated on the frontend
   }
 
   const errorTypes: { [errorType: string]: string[] } = {
@@ -37,12 +43,12 @@
     'Optimization Errors': ['driveError:extraFile', 'driveError:emptyFolder', 'emptyFolder', 'filesFolders', 'albumSize', 'extraFile', 'duplicate']
   }
 
-  let viewedErrorTypes = Object.keys(errorTypes)
-  $: viewedErrorIDs = Object.keys(errorTypes).flatMap(type => viewedErrorTypes.includes(type) ? errorTypes[type] : [])
+  let viewedErrorTypes = keys(errorTypes)
+  $: viewedErrorIDs = keys(errorTypes).flatMap(type => viewedErrorTypes.includes(type) ? errorTypes[type] : [])
 
   let showHiddenWarnings = false
-  const hiddenWarnings = writable<string[]>(JSON.parse(localStorage.getItem('hiddenWarnings')) ?? [])
-  hiddenWarnings.subscribe(val => localStorage.setItem('hiddenWarnings', JSON.stringify(val)))
+  const hiddenWarnings = writable<string[]>(JSON.parse(localStorage.getItem(`hiddenWarnings_${driveFolderID}`)) ?? [])
+  hiddenWarnings.subscribe(val => localStorage.setItem(`hiddenWarnings_${driveFolderID}`, JSON.stringify(val)))
 
   let errorFile: ErrorFile
   let chartErrorsView: SourceErrors
@@ -58,18 +64,39 @@
   function updateTable() {
     chartErrorsView = cloneDeep(errorFile.chartErrors)
     for (const filesHash in chartErrorsView) {
+      const sourceItem = chartErrorsView[filesHash]
 
       // Remove hidden errors
-      for (const errorID in chartErrorsView[filesHash].errors) {
+      for (const errorID in sourceItem.errors) {
         if (viewedErrorIDs.every(viewedErrorID => !errorID.startsWith(viewedErrorID))) {
-          delete chartErrorsView[filesHash].errors[errorID]
+          delete sourceItem.errors[errorID]
         }
       }
 
       // Remove hidden warnings
-      for (const warningID in chartErrorsView[filesHash].warnings) {
+      for (const warningID in sourceItem.warnings) {
         if (!showHiddenWarnings && $hiddenWarnings.includes(`${filesHash}_${warningID}`)) {
-          delete chartErrorsView[filesHash].warnings[warningID]
+          delete sourceItem.warnings[warningID]
+        }
+      }
+
+      // Remove items with no errors left
+      if (keys(sourceItem.errors).length + keys(sourceItem.warnings).length == 0) {
+        delete chartErrorsView[filesHash]
+      }
+
+      // Set chartName
+      const chartErrorWarnings = [...values(sourceItem.errors), ...values(sourceItem.warnings)]
+      const chartErrorWarningNames = chartErrorWarnings.map(errorWarning => errorWarning.name).filter(Boolean)
+      sourceItem.displayName = sourceItem.inChartPack || chartErrorWarningNames.length == 0 ? sourceItem.itemName : chartErrorWarningNames[0]
+
+      // Parse "duplicate" links
+      for (const errorID in sourceItem.errors) {
+        const desc = sourceItem.errors[errorID].description
+        if (desc.startsWith('There is another copy of this chart')) {
+          sourceItem.errors[errorID].description = 'There is another copy of this chart '
+          const [startIndex, endIndex] = [desc.lastIndexOf('[') + 1, desc.lastIndexOf(']')]
+          sourceItem.errors[errorID].referenceFolderLink = desc.substring(startIndex, endIndex)
         }
       }
     }
@@ -80,11 +107,13 @@
     <div class="form-control mx-auto">
       <div class="card bordered compact">
         <div class="card-body">
-          <h2 class="card-title font-bold">{errorFile.sourceName}</h2>
+          <h2 class="card-title font-bold">
+            <a target="_blank" class="link link-hover inline-block -mb-1 ml-1" href="{driveLink(driveFolderID)}">{errorFile.sourceName}</a>
+          </h2>
           <table class="table w-full table-auto">
             <thead>
               <tr>
-                <th class="!p-2">Charters in this source</th>
+                <th class="!p-2">Charter{keys(errorFile.usernameCounts).length == 1 ? '' : 's'} in this source</th>
                 <th class="!p-2 text-right">Visible error types</th>
               </tr>
             </thead>
@@ -92,14 +121,14 @@
               <tr>
                 <td class="!p-2 !align-top">
                   <div class="flex flex-wrap gap-x-3">
-                    {#each Object.entries(errorFile.usernameCounts) as [username, usernameCount] }
+                    {#each entries(errorFile.usernameCounts) as [username, usernameCount] }
                       <span><span class="font-bold">{username}</span> ({usernameCount})</span>
                     {/each}
                   </div>
                 </td>
                 <td class="!p-2 !align-top">
                   <div class="flex flex-wrap justify-end gap-x-3">
-                    {#each Object.keys(errorTypes) as errorType}
+                    {#each keys(errorTypes) as errorType}
                       <label class="label cursor-pointer">
                         <span class="label-text mr-1">{ errorType }</span>
                         <input type="checkbox" value="{errorType}" bind:group={viewedErrorTypes} on:change="{updateTable}" class="checkbox checkbox-xs">
@@ -116,6 +145,31 @@
           </table>
         </div>
       </div>
+      {#if values(chartErrorsView).length == 0}
+        <div class="alert alert-info text-center mt-16 mx-auto">No errors to display on this source</div>
+      {/if}
+      {#each values(chartErrorsView) as sourceItem }
+        <div class="card compact bordered">
+          <div class="card-body">
+            <h2 class="card-title">
+              {sourceItem.displayName}
+              <a target="_blank" class="link inline-block -mb-1 ml-1" href="{driveLink(sourceItem.folderID)}"><Fa icon={faFolderOpen}/></a>
+            </h2>
+            {#each values(sourceItem.errors) as error}
+              <div>
+                {#if sourceItem.inChartPack}{error.name}: {/if}
+                {error.description}{#if error.referenceFolderLink}<a target="_blank" class="link" href="{error.referenceFolderLink}">here</a>.{/if}
+              </div>
+            {/each}
+            {#if keys(sourceItem.errors).length > 0 && keys(sourceItem.warnings).length > 0}
+              <div class="divider my-1"></div> 
+            {/if}
+            {#each values(sourceItem.warnings) as warning}
+              <div>{#if sourceItem.inChartPack}{warning.name}: {/if}{warning.description}</div>
+            {/each}
+          </div>
+        </div>
+      {/each}
     </div>
   </div>
 {/if}
