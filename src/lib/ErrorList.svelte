@@ -3,7 +3,7 @@
   import { cloneDeep, keys, values, entries } from 'lodash'
   import { driveLink } from '../utils'
   import { writable } from 'svelte/store'
-  import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
+  import { faFolderOpen, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
   import Fa from 'svelte-fa'
   export let location: Location
   export let driveFolderID: string
@@ -49,9 +49,23 @@
   let showHiddenWarnings = false
   const hiddenWarnings = writable<string[]>(JSON.parse(localStorage.getItem(`hiddenWarnings_${driveFolderID}`)) ?? [])
   hiddenWarnings.subscribe(val => localStorage.setItem(`hiddenWarnings_${driveFolderID}`, JSON.stringify(val)))
+  function hideWarning(filesHash: string, warningID: string) {
+    hiddenWarnings.update(warnings => [...warnings, `${filesHash}_${warningID}`])
+    updateTable()
+  }
+  function showWarning(filesHash: string, warningID: string) {
+    hiddenWarnings.update(warnings => warnings.filter(warning => warning != `${filesHash}_${warningID}`))
+    updateTable()
+  }
 
   let errorFile: ErrorFile
   let chartErrorsView: SourceErrors
+
+  let filteredCharter: string = null
+  function filterCharter(username: string) {
+    filteredCharter = filteredCharter == username ? null : username
+    updateTable()
+  }
 
   getTableData()
 
@@ -83,12 +97,23 @@
       // Remove items with no errors left
       if (keys(sourceItem.errors).length + keys(sourceItem.warnings).length == 0) {
         delete chartErrorsView[filesHash]
+        continue
       }
 
       // Set chartName
       const chartErrorWarnings = [...values(sourceItem.errors), ...values(sourceItem.warnings)]
       const chartErrorWarningNames = chartErrorWarnings.map(errorWarning => errorWarning.name).filter(Boolean)
       sourceItem.displayName = sourceItem.inChartPack || chartErrorWarningNames.length == 0 ? sourceItem.itemName : chartErrorWarningNames[0]
+
+      // Remove items with non-filtered charters
+      if (filteredCharter) {
+        const [startIndex, endIndex] = [sourceItem.displayName.lastIndexOf('(') + 1, sourceItem.displayName.lastIndexOf(')')]
+        const charters = sourceItem.displayName.substring(startIndex, endIndex)
+        if (!filteredCharter.split('/').some(username => charters.includes(username))) {
+          delete chartErrorsView[filesHash]
+          continue
+        }
+      }
 
       // Parse "duplicate" links
       for (const errorID in sourceItem.errors) {
@@ -122,7 +147,9 @@
                 <td class="!p-2 !align-top">
                   <div class="flex flex-wrap gap-x-3">
                     {#each entries(errorFile.usernameCounts) as [username, usernameCount] }
-                      <span><span class="font-bold">{username}</span> ({usernameCount})</span>
+                      <span class="link link-hover" class:underline="{username == filteredCharter}" on:click={() => filterCharter(username)}>
+                        <span class="font-bold">{username}</span> ({usernameCount})
+                      </span>
                     {/each}
                   </div>
                 </td>
@@ -148,7 +175,7 @@
       {#if values(chartErrorsView).length == 0}
         <div class="alert alert-info text-center mt-16 mx-auto">No errors to display on this source</div>
       {/if}
-      {#each values(chartErrorsView) as sourceItem }
+      {#each entries(chartErrorsView) as [filesHash, sourceItem] }
         <div class="card compact bordered">
           <div class="card-body">
             <h2 class="card-title">
@@ -156,16 +183,27 @@
               <a target="_blank" class="link inline-block -mb-1 ml-1" href="{driveLink(sourceItem.folderID)}"><Fa icon={faFolderOpen}/></a>
             </h2>
             {#each values(sourceItem.errors) as error}
-              <div>
-                {#if sourceItem.inChartPack}{error.name}: {/if}
-                {error.description}{#if error.referenceFolderLink}<a target="_blank" class="link" href="{error.referenceFolderLink}">here</a>.{/if}
+              <div class="whitespace-pre-line">
+                {#if sourceItem.inChartPack}{error.name}: {/if}{error.description}
+                {#if error.referenceFolderLink}<a target="_blank" class="link" href="{error.referenceFolderLink}">here</a>.{/if}
               </div>
             {/each}
             {#if keys(sourceItem.errors).length > 0 && keys(sourceItem.warnings).length > 0}
               <div class="divider my-1"></div> 
             {/if}
-            {#each values(sourceItem.warnings) as warning}
-              <div>{#if sourceItem.inChartPack}{warning.name}: {/if}{warning.description}</div>
+            {#each entries(sourceItem.warnings) as [warningID, warning]}
+              <div class="whitespace-pre-line">
+                [Warning] {#if sourceItem.inChartPack}{warning.name}: {/if}{warning.description}
+                {#if !$hiddenWarnings.includes(`${filesHash}_${warningID}`)}
+                  <span data-tip="Hide" class="cursor-pointer tooltip" on:click={() => hideWarning(filesHash, warningID)}>
+                    <Fa class="inline-block ml-1" icon={faEyeSlash}/>
+                  </span>
+                {:else}
+                  <span data-tip="Show" class="cursor-pointer tooltip" on:click={() => showWarning(filesHash, warningID)}>
+                    <Fa class="inline-block ml-1" icon={faEye}/>
+                  </span>
+                {/if}
+              </div>
             {/each}
           </div>
         </div>
