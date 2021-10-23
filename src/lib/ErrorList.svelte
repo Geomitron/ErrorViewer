@@ -38,9 +38,9 @@
     'Missing File Errors': ['noMetadata', 'noChart', 'noAudio', 'noAlbumArt'],
     'Broken File Errors': ['badChart', 'badAlbum', 'badAudio'],
     'File Naming Errors': ['multipleIniFiles', 'invalidIni', 'multipleCharts', 'invalidChart', 'invalidAudio', 'invalidImage', 'multipleAlbums'],
-    'Metadata Errors': ['invalidMetadata', 'invalidIniLine', 'missingMetadata', 'metadataFix'],
+    'Metadata Errors': ['invalidMetadata', 'missingMetadata', 'metadataFix'],
     'Chart File Errors': ['invalidChartLine', 'brokenNotes', 'noSections', 'noStarPower', 'nonzeroDelay', 'nonzeroOffset'],
-    'Optimization Errors': ['driveError:extraFile', 'driveError:emptyFolder', 'emptyFolder', 'filesFolders', 'albumSize', 'extraFile', 'duplicate']
+    'Optimization Errors': ['driveError:extraFile', 'driveError:emptyFolder', 'invalidIniLine', 'emptyFolder', 'filesFolders', 'albumSize', 'extraFile', 'duplicate']
   }
 
   let viewedErrorTypes = keys(errorTypes)
@@ -128,7 +128,7 @@
   }
 </script>
 {#if errorFile}
-  <div class="container mx-auto my-12 w-3/4 flex">
+  <div class="container my-12 flex">
     <div class="form-control mx-auto">
       <div class="card bordered compact">
         <div class="card-body">
@@ -138,7 +138,7 @@
           <table class="table w-full table-auto">
             <thead>
               <tr>
-                <th class="!p-2">Charter{keys(errorFile.usernameCounts).length == 1 ? '' : 's'} in this source</th>
+                <th class="!p-2 !whitespace-normal">Charter{keys(errorFile.usernameCounts).length == 1 ? '' : 's'} in this source</th>
                 <th class="!p-2 text-right">Visible error types</th>
               </tr>
             </thead>

@@ -38,7 +38,7 @@ console.log('Source list running...')
   }
 </script>
 
-<div class="container mx-auto my-12 w-1/2 flex">
+<div class="container my-12 px-1.5 flex">
   <div class="form-control mx-auto">
     <input type="text" bind:value="{filterText}" on:keyup="{updateTable}" class="input input-primary input-bordered" placeholder="Filter">
     <div class="flex flex-row-reverse">
