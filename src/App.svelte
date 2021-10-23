@@ -11,7 +11,7 @@
 
   <Navbar />
 
-  <Router url="{url}">
+  <Router basepath="/ErrorViewer/dist" url="{url}">
     <div>
       <Route path='error-list/:driveFolderID' component="{ErrorList}" />
       <Route path='/' component="{SourceList}" />

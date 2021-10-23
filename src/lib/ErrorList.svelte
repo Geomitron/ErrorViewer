@@ -70,7 +70,7 @@
   getTableData()
 
   async function getTableData() {
-    const results = await fetch(`http://bridge-db.net/api/error-list/${driveFolderID}`)
+    const results = await fetch(`https://bridge-db.net/api/error-list/${driveFolderID}`)
     errorFile = await results.json()
     updateTable()
   }

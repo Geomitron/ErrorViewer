@@ -5,7 +5,7 @@
   import { faFolderOpen } from '@fortawesome/free-solid-svg-icons'
   import Fa from 'svelte-fa'
   export let location: Location
-
+console.log('Source list running...')
   type SearchType = 'sourceName' | 'charterName' | 'driveLink'
   interface SourceDataQueryResult {
     sourceName: string
@@ -22,7 +22,7 @@
   getTableData()
 
   async function getTableData() {
-    const results = await fetch('http://bridge-db.net/api/error-list/sources-list')
+    const results = await fetch('https://bridge-db.net/api/error-list/sources-list')
     rows = await results.json()
     updateTable()
   }
